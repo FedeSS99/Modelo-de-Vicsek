@@ -1,4 +1,4 @@
-# Vicsek-Model
+# Modelo de Vicsek
 Este projecto, ubicado en el archivo de Python, brindandose valores especificos a algunas constantes simula lo que sería la dinamica de partículas con movimiento propio e individual pero afectado por el movimiento de sus vecinas dentro de un radio dado y ella misma.
 
 Las reglas por las que se rigen son basadas en el trabajo de Vicsek (1995) y la elaboración del proyecto se documentó en el sig. trabajo: 
