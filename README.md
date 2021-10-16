@@ -5,7 +5,7 @@ Las reglas por las que se rigen son basadas en el trabajo de Vicsek (1995) y la 
 https://www.researchgate.net/publication/258357999_On_the_Emergence_of_Collective_Order_in_Swarming_Systems_a_Recent_Debate
 
 Y aquí una captura de lo que se estaría observando
-![Ejemplo Vicsek Model.png](https://github.com/FedeSS99/Vicsek-Model/blob/main/Ejemplo%20Vicsek%20Model.png?raw=true)
+![Ejemplo Vicsek Model.png](https://github.com/FedeSS99/Modelo-de-Vicsek/blob/79bae0e917e3f1c335c275dafbd974300f3d0c46/Ejemplo%20Vicsek%20Model.png)
 
 Un ejemplo animado, si bien largo, pero de lo que puede aportar el programa se muestra en el siguiente link:
 https://youtu.be/gdymJIqzINA
