@@ -1,93 +1,71 @@
 import numpy as np
-from numpy.random import uniform, rand
-from matplotlib.pyplot import figure, show
-from matplotlib.gridspec import GridSpec
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore
+from time import perf_counter
 
-n_particles = 500 #Number of particles
-l =  20.0 #Dimensions of the box
-r = 2.5 #neighbourhood radius
-dt = 0.1 #time interval
-t = 0.0 #time
-time_steps = 500 #Number of time steps
-v0 = 0.5 #Velocity magnitude
-number_noises = 16 #Number of noise samples
+from RutinaVicsek import ActualizarFlocking
 
-x, y = uniform(0.0, l, (n_particles, 1)), uniform(0.0, l, (n_particles, 1))
-theta = uniform(-np.pi, np.pi, (n_particles, 1))
+N_particulas = 500 #Numero de particulas
+lx, ly =  20.0, 20.0 #Dimensiones de la caja
+r = min(lx,ly)/max(lx,ly) #Radio de vecindad
+dt = 0.1 #Intervalo de tiempo
+v0 = 1.0 #Magnitud de velocidad
+Ruido = 1.5 #factor de Ruido
+
+Dtype = np.float64
+
+x, y = np.random.uniform(2.0*lx/4.0, 4.0*lx/6.0, (N_particulas,1)), np.random.uniform(2.0*ly/6.0, 4.0*ly/6.0, (N_particulas,1))
+Pos = np.concatenate([x,y], axis=1)
+theta = np.random.uniform(-np.pi, np.pi, (N_particulas,1))
 vx, vy = v0*np.cos(theta), v0*np.sin(theta)
+Velocidad = np.concatenate([vx,vy], axis=1)
 
-noise = np.linspace(0.0, 5.0, number_noises, dtype=np.float64, endpoint=True)
-average_velocities = np.zeros(number_noises, dtype=np.float64)
-
+FPS = 0
 #Creating the main figure within its subplots
-main_figure = figure(1, (8, 6))
-gs = GridSpec(3, 3, main_figure)
+pg.setConfigOption("background", "k")
+pg.setConfigOption("foreground", "w")
+ventana = pg.GraphicsLayoutWidget(show=True, title=f"Simulación de modelo de Ising, {FPS=}",size=(1200,700))
 
-subplot1, subplot2 = main_figure.add_subplot(gs[:-1,:]), main_figure.add_subplot(gs[2,:])
+string_constant_data = "N={0}, <font>&eta;<font>={1:.3f}, v<sub>0</sub>={2:.3f}, dt={3:.3f}".format(N_particulas, Ruido, v0, dt)
 
-subplot1.set_xlabel("X")
-subplot1.set_ylabel("Y")
-subplot1.set_aspect("equal", "box")
-subplot1.set_xlim(0.0, l)
-subplot1.set_ylim(0.0, l)
-subplot1.get_xaxis().set_visible(False)
-subplot1.get_yaxis().set_visible(False)
+PlotParticulas = ventana.addPlot(col=0 ,rowspan=2,
+labels={"bottom":"Posición X", "left":"Posición Y"}, title=string_constant_data)
+PlotParticulas.setXRange(0,lx)
+PlotParticulas.setYRange(0,ly)
+PlotParticulas.setAspectLocked(True, ratio=1)
+PlotParticulas.setMouseEnabled(x=False, y=False)
+PlotParticulas.hideButtons()
 
-subplot2.set_xlabel(r"Noise $\eta$")
-subplot2.set_ylabel(r"Average normalize velocity $v_{a}$")
-subplot2.set_xlim(-0.1, max(noise)+0.1)
-subplot2.set_ylim(0.0, 1.1)
-subplot2.spines["top"].set_visible(False)
-subplot2.spines["right"].set_visible(False)
+PuntosParticulas = PlotParticulas.plot(Pos[:,0], Pos[:,1], pen=None, symbol="o", symbolPen=None, 
+pxMode=False, symbolSize = min(lx,ly)/100, symbolBrush=pg.mkBrush(color="w"))
 
-#Declaring the plots for each subplot
-particles, = subplot1.plot([], [], "ok", markersize=1.0)
-noise_velocity_plot, = subplot2.plot([], [], "--ob", markersize=3)
+timer = QtCore.QTimer()
+timer.setSingleShot(True)
+TiempoActualizar = perf_counter()
+transcurrido = 0.0
 
-show(block=False)
+#Inicia utilizando el parametro de ruido para simular las particulas y su dinamica   
+def ActualizarEstadoParitculas():
+   global Pos, Velocidad, theta, TiempoActualizar, transcurrido
 
-#Function with the algoritm proposed by Vicsek (1995)
-def Update_Flocking(noise_val, x_pos, y_pos, vx_particle, vy_particle, theta_particle):
-   global dt, l, n_particles
+   thetaCopia = np.copy(theta)
+   ActualizarFlocking( Ruido,  dt,  v0,  lx,  ly,  r, Pos, Velocidad, theta, thetaCopia)
 
-   x_pos += vx_particle*dt
-   y_pos += vy_particle*dt
+   PuntosParticulas.setData(Pos[:,0], Pos[:,1])
+   string_constant_data = "N={0}, <font>&eta;<font>={1:.3f}, v<sub>0</sub>={2:.3f}, dt={3:.3f}".format(N_particulas, Ruido, v0, dt)
+   PlotParticulas.setTitle(string_constant_data)
 
-   x_pos = x_pos % l
-   y_pos = y_pos % l
+   TiempoAct = perf_counter()
+   TiempoTrans = TiempoAct - TiempoActualizar
+   TiempoActualizar = TiempoAct
+   transcurrido = transcurrido*0.9 + TiempoTrans*0.1
+   FPS = int(1.0/transcurrido)
+   ventana.setWindowTitle(f"Simulación de modelo de Ising, {FPS=}")
 
-   mean_angle = np.copy(theta_particle)
-     
-   for j in range(n_particles):
-      near_particles = (x_pos-x_pos[j])**2.0 + (y_pos-y_pos[j])**2.0 < r**2.0
-      sum_cos = np.sum(np.cos( theta_particle[near_particles] ))/near_particles.size
-      sum_sin = np.sum(np.sin( theta_particle[near_particles] ))/near_particles.size
+   timer.start()
 
-      mean_angle[j] = np.arctan2(sum_sin, sum_cos)
-        
-   theta_particle = mean_angle + noise_val*(rand(n_particles,1)-0.5)
+timer.timeout.connect(ActualizarEstadoParitculas)
+ActualizarEstadoParitculas()
 
-   vx_particle = v0*np.cos(theta_particle)
-   vy_particle = v0*np.sin(theta_particle)
-
-   return x_pos, y_pos, vx_particle, vy_particle, theta_particle
-
-#Start using every noise value in the array "noise" to simulate the system with this
-#different setting
-for k in range(noise.size):
-   string_constant_data = r"N={0}, $\eta$={1:.2f}, $v_{{0}}$={2:.2f}, dt={3:.2f}".format(n_particles, noise[k], v0, dt)
-   title = main_figure.suptitle(string_constant_data+f"\nt={t:.2f}")
-
-   t = 0.0
-   
-   for time_step in range(time_steps):
-      t += dt
-      x, y, vx, vy, theta = Update_Flocking(noise[k], x, y, vx, vy, theta)
-      average_velocities[k] = np.sqrt( np.sum(vx)**2.0 + np.sum(vy)**2.0 )/(n_particles*v0)
-      
-      particles.set_data(x,y)
-      noise_velocity_plot.set_data(noise[:(k+1)], average_velocities[:(k+1)])
-      title.set_text(string_constant_data+f"\nt={t:.2f}")
-
-      main_figure.canvas.draw()
-      main_figure.canvas.flush_events()
+if __name__=="__main__":
+   pg.exec()
